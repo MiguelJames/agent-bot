@@ -67,13 +67,10 @@ client.on(Events.MessageCreate, async message => {
   // ===== INVENTORY =====
   if (message.content.startsWith('!inventory')) {
     const user = message.mentions.users.first() || message.author;
-
     const agents = loadAgents();
     const agent = agents.find(a => a.userId === user.id);
 
-    if (!agent) {
-      return message.reply('❌ No data found for this agent.');
-    }
+    if (!agent) return message.reply('❌ No data found for this agent.');
 
     const embed = new EmbedBuilder()
       .setTitle(`📦 ${agent.agent} Inventory`)
@@ -89,8 +86,20 @@ client.on(Events.MessageCreate, async message => {
         { name: '💊 IFAKs', value: agent.num_ifaks, inline: true }
       );
 
-    message.channel.send({ embeds: [embed] });
+    return message.channel.send({ embeds: [embed] });
   }
+
+  // ===== BADGE GENERATOR =====
+  if (message.content === '!generatebadgeppd') {
+    const rand = Math.floor(Math.random() * 9000) + 1000; // random 4-digit
+    return message.reply(`✅ New PPD Badge: PPD-${rand}`);
+  }
+
+  if (message.content === '!generatebadgess') {
+    const rand = Math.floor(Math.random() * 9000) + 1000; // random 4-digit
+    return message.reply(`✅ New SS Badge: SS-${rand}`);
+  }
+
 });
 
 // ===== INTERACTIONS =====
@@ -162,14 +171,8 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // FORM 1
     if (interaction.customId === 'form1') {
-
       let badge = interaction.fields.getTextInputValue('bn');
-      const agents = loadAgents();
-
-      if (!badge || badge.trim() === '') {
-        badge = `AG-${(agents.length + 1).toString().padStart(4, '0')}`;
-      }
-
+      if (!badge || badge.trim() === '') badge = `AG-${Math.floor(Math.random() * 9000) + 1000}`;
       Object.assign(client.tempData[id], {
         agent: interaction.fields.getTextInputValue('agent'),
         division: interaction.fields.getTextInputValue('division'),
@@ -227,7 +230,6 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // FORM 4 FINAL
     if (interaction.customId === 'form4') {
-
       Object.assign(client.tempData[id], {
         taser_sn: interaction.fields.getTextInputValue('taser'),
         num_armours: interaction.fields.getTextInputValue('armour'),
@@ -235,7 +237,6 @@ client.on(Events.InteractionCreate, async interaction => {
       });
 
       const data = client.tempData[id];
-
       const agents = loadAgents();
       agents.push({ userId: id, ...data });
       saveAgents(agents);

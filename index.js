@@ -1,6 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-const fs = require('fs');
+const mongoose = require('mongoose');
 const {
   Client,
   GatewayIntentBits,
@@ -14,30 +14,43 @@ const {
   EmbedBuilder
 } = require('discord.js');
 
-// ===== DATABASE =====
-const DATA_FILE = './agents.json';
-
-function loadAgents() {
-  if (!fs.existsSync(DATA_FILE)) return [];
-  return JSON.parse(fs.readFileSync(DATA_FILE));
-}
-
-function saveAgents(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-}
-
 // ===== EXPRESS =====
 const app = express();
 app.get('/', (req, res) => res.send('Bot is alive!'));
-app.listen(process.env.PORT || 3000);
+app.listen(process.env.PORT || 3000, () => console.log('✅ Uptime server running'));
+
+// ===== MONGOOSE =====
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('✅ Connected to MongoDB'))
+  .catch(err => console.log('❌ MongoDB connection error:', err));
+
+// ===== SCHEMA =====
+const agentSchema = new mongoose.Schema({
+  userId: String,
+  agent: String,
+  division: String,
+  bn: String,
+  equipment_date: String,
+  equipped_by: String,
+  weapon1_type: String,
+  weapon1_sn: String,
+  weapon1_ammo_type: String,
+  weapon1_ammo_count: String,
+  weapon1_condition: String,
+  weapon2_type: String,
+  weapon2_sn: String,
+  weapon2_ammo_type: String,
+  weapon2_ammo_count: String,
+  weapon2_condition: String,
+  taser_sn: String,
+  num_armours: String,
+  num_ifaks: String
+});
+const Agent = mongoose.model('Agent', agentSchema);
 
 // ===== CLIENT =====
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
 client.tempData = {};
@@ -66,9 +79,7 @@ client.on(Events.MessageCreate, async message => {
   // ===== INVENTORY =====
   if (message.content.startsWith('!inventory')) {
     const user = message.mentions.users.first() || message.author;
-    const agents = loadAgents();
-    const agent = agents.find(a => a.userId === user.id);
-
+    const agent = await Agent.findOne({ userId: user.id });
     if (!agent) return message.reply('❌ No data found for this agent.');
 
     const embed = new EmbedBuilder()
@@ -90,50 +101,35 @@ client.on(Events.MessageCreate, async message => {
 
   // ===== BADGE GENERATOR =====
   if (message.content === '!generatebadgeppd') {
-    const rand = Math.floor(Math.random() * 9000) + 1000; // random 4-digit
+    const rand = Math.floor(Math.random() * 9000) + 1000;
     return message.reply(`✅ New PPD Badge: PPD-${rand}`);
   }
-
   if (message.content === '!generatebadgess') {
-    const rand = Math.floor(Math.random() * 9000) + 1000; // random 4-digit
+    const rand = Math.floor(Math.random() * 9000) + 1000;
     return message.reply(`✅ New SS Badge: SS-${rand}`);
   }
 
-  // ===== LIST ALL AGENTS =====
+  // ===== LIST AGENTS =====
   if (message.content === '!agents') {
-    const agents = loadAgents();
+    const agents = await Agent.find({});
     if (!agents.length) return message.reply('❌ No agents registered yet.');
 
-    const embed = new EmbedBuilder()
-      .setTitle('📋 Registered Agents')
-      .setColor(0x00FF00);
-
-    agents.forEach(a => {
-      embed.addFields({ name: a.agent, value: `Badge: ${a.bn} | Division: ${a.division}`, inline: false });
-    });
+    const embed = new EmbedBuilder().setTitle('📋 Registered Agents').setColor(0x00FF00);
+    agents.forEach(a => embed.addFields({ name: a.agent, value: `${a.bn} | ${a.division}`, inline: false }));
 
     return message.channel.send({ embeds: [embed] });
   }
-
 });
 
 // ===== INTERACTIONS =====
 client.on(Events.InteractionCreate, async interaction => {
-
-  // ===== BUTTONS =====
   if (interaction.isButton()) {
     const openModal = (id, title, fields) => {
       const modal = new ModalBuilder().setCustomId(id).setTitle(title);
       fields.forEach(f => {
-        modal.addComponents(
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-              .setCustomId(f.id)
-              .setLabel(f.label)
-              .setStyle(TextInputStyle.Short)
-              .setRequired(true)
-          )
-        );
+        modal.addComponents(new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId(f.id).setLabel(f.label).setStyle(TextInputStyle.Short).setRequired(true)
+        ));
       });
       return modal;
     };
@@ -148,36 +144,29 @@ client.on(Events.InteractionCreate, async interaction => {
       ]));
     }
 
-    if (interaction.customId === 'next2') {
-      return interaction.showModal(openModal('form2', 'Form 2', [
-        { id: 'w1type', label: 'Weapon 1 Type' },
-        { id: 'w1sn', label: 'Weapon 1 SN' },
-        { id: 'w1ammo', label: 'Ammo Type' },
-        { id: 'w1count', label: 'Ammo Count' },
-        { id: 'w1cond', label: 'Condition' }
-      ]));
-    }
+    if (interaction.customId === 'next2') return interaction.showModal(openModal('form2', 'Form 2', [
+      { id: 'w1type', label: 'Weapon 1 Type' },
+      { id: 'w1sn', label: 'Weapon 1 SN' },
+      { id: 'w1ammo', label: 'Ammo Type' },
+      { id: 'w1count', label: 'Ammo Count' },
+      { id: 'w1cond', label: 'Condition' }
+    ]));
 
-    if (interaction.customId === 'next3') {
-      return interaction.showModal(openModal('form3', 'Form 3', [
-        { id: 'w2type', label: 'Weapon 2 Type' },
-        { id: 'w2sn', label: 'Weapon 2 SN' },
-        { id: 'w2ammo', label: 'Ammo Type' },
-        { id: 'w2count', label: 'Ammo Count' },
-        { id: 'w2cond', label: 'Condition' }
-      ]));
-    }
+    if (interaction.customId === 'next3') return interaction.showModal(openModal('form3', 'Form 3', [
+      { id: 'w2type', label: 'Weapon 2 Type' },
+      { id: 'w2sn', label: 'Weapon 2 SN' },
+      { id: 'w2ammo', label: 'Ammo Type' },
+      { id: 'w2count', label: 'Ammo Count' },
+      { id: 'w2cond', label: 'Condition' }
+    ]));
 
-    if (interaction.customId === 'next4') {
-      return interaction.showModal(openModal('form4', 'Form 4', [
-        { id: 'taser', label: 'Taser SN' },
-        { id: 'armour', label: 'Number of Armours' },
-        { id: 'ifaks', label: 'Number of IFAKs' }
-      ]));
-    }
+    if (interaction.customId === 'next4') return interaction.showModal(openModal('form4', 'Form 4', [
+      { id: 'taser', label: 'Taser SN' },
+      { id: 'armour', label: 'Number of Armours' },
+      { id: 'ifaks', label: 'Number of IFAKs' }
+    ]));
   }
 
-  // ===== MODALS =====
   if (interaction.isModalSubmit()) {
     const id = interaction.user.id;
     if (!client.tempData[id]) client.tempData[id] = {};
@@ -193,12 +182,9 @@ client.on(Events.InteractionCreate, async interaction => {
         equipment_date: interaction.fields.getTextInputValue('date'),
         equipped_by: interaction.fields.getTextInputValue('by')
       });
-
       return interaction.reply({
         content: 'Part 1 saved',
-        components: [new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('next2').setLabel('Next').setStyle(ButtonStyle.Success)
-        )],
+        components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('next2').setLabel('Next').setStyle(ButtonStyle.Success))],
         flags: 64
       });
     }
@@ -212,12 +198,9 @@ client.on(Events.InteractionCreate, async interaction => {
         weapon1_ammo_count: interaction.fields.getTextInputValue('w1count'),
         weapon1_condition: interaction.fields.getTextInputValue('w1cond')
       });
-
       return interaction.reply({
         content: 'Part 2 saved',
-        components: [new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('next3').setLabel('Next').setStyle(ButtonStyle.Success)
-        )],
+        components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('next3').setLabel('Next').setStyle(ButtonStyle.Success))],
         flags: 64
       });
     }
@@ -231,12 +214,9 @@ client.on(Events.InteractionCreate, async interaction => {
         weapon2_ammo_count: interaction.fields.getTextInputValue('w2count'),
         weapon2_condition: interaction.fields.getTextInputValue('w2cond')
       });
-
       return interaction.reply({
         content: 'Part 3 saved',
-        components: [new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('next4').setLabel('Finish').setStyle(ButtonStyle.Success)
-        )],
+        components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('next4').setLabel('Finish').setStyle(ButtonStyle.Success))],
         flags: 64
       });
     }
@@ -250,22 +230,17 @@ client.on(Events.InteractionCreate, async interaction => {
       });
 
       const data = client.tempData[id];
-      const agents = loadAgents();
-      agents.push({ userId: id, ...data });
-      saveAgents(agents);
+      await Agent.create({ userId: id, ...data });
 
-      const embed = new EmbedBuilder()
-        .setTitle('New Agent')
-        .addFields(
-          { name: 'Agent', value: data.agent },
-          { name: 'Badge', value: data.bn }
-        );
+      const embed = new EmbedBuilder().setTitle('New Agent').addFields(
+        { name: 'Agent', value: data.agent },
+        { name: 'Badge', value: data.bn }
+      );
 
       const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
       await channel.send({ embeds: [embed] });
 
       delete client.tempData[id];
-
       return interaction.reply({ content: 'Done', flags: 64 });
     }
   }

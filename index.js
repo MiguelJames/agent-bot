@@ -48,7 +48,6 @@ client.once(Events.ClientReady, () => {
 
 // ===== COMMANDS =====
 client.on(Events.MessageCreate, async message => {
-
   if (message.author.bot) return;
 
   // ===== REGISTER =====
@@ -100,6 +99,22 @@ client.on(Events.MessageCreate, async message => {
     return message.reply(`✅ New SS Badge: SS-${rand}`);
   }
 
+  // ===== LIST ALL AGENTS =====
+  if (message.content === '!agents') {
+    const agents = loadAgents();
+    if (!agents.length) return message.reply('❌ No agents registered yet.');
+
+    const embed = new EmbedBuilder()
+      .setTitle('📋 Registered Agents')
+      .setColor(0x00FF00);
+
+    agents.forEach(a => {
+      embed.addFields({ name: a.agent, value: `Badge: ${a.bn} | Division: ${a.division}`, inline: false });
+    });
+
+    return message.channel.send({ embeds: [embed] });
+  }
+
 });
 
 // ===== INTERACTIONS =====
@@ -107,7 +122,6 @@ client.on(Events.InteractionCreate, async interaction => {
 
   // ===== BUTTONS =====
   if (interaction.isButton()) {
-
     const openModal = (id, title, fields) => {
       const modal = new ModalBuilder().setCustomId(id).setTitle(title);
       fields.forEach(f => {
@@ -166,7 +180,6 @@ client.on(Events.InteractionCreate, async interaction => {
   // ===== MODALS =====
   if (interaction.isModalSubmit()) {
     const id = interaction.user.id;
-
     if (!client.tempData[id]) client.tempData[id] = {};
 
     // FORM 1

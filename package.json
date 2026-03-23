@@ -7,13 +7,17 @@
     "start": "node index.js",
     "test": "echo \"No tests\""
   },
-  "keywords": ["discord", "bot"],
+  "keywords": [
+    "discord",
+    "bot"
+  ],
   "author": "MiguelJames",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "discord.js": "^14.25.1",
     "dotenv": "^17.3.1",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "mongoose": "^9.3.2"
   }
 }

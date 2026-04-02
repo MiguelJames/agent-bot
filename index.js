@@ -118,7 +118,7 @@ client.on(Events.MessageCreate, async message => {
   if (message.content === '!getallids') {
     console.log('🔥 COMMAND TRIGGERED');
 
-    const roleIds = ['1467573548897009980', '1467573023161843793'];
+    const roleIds = ['1487891819688624358'];
 
     const guild = message.guild;
     if (!guild) return message.reply('❌ This command only works in a server.');

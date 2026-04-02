@@ -114,19 +114,27 @@ client.on(Events.MessageCreate, async message => {
     return message.reply(`✅ New SS Badge: SS-${rand}`);
   }
 
-  // ===== GET ALL USER IDs BY ROLE =====
+  // ===== GET ALL USER IDs BY ROLE (DEBUG ADDED) =====
   if (message.content === '!getallids') {
+    console.log('🔥 COMMAND TRIGGERED');
+
     const roleIds = ['1467573548897009980', '1467573023161843793'];
 
     const guild = message.guild;
     if (!guild) return message.reply('❌ This command only works in a server.');
 
+    await message.reply('⏳ Fetching members...');
+
     try {
       await guild.members.fetch();
+
+      console.log('Total members:', guild.members.cache.size);
 
       const membersWithRoles = guild.members.cache.filter(member =>
         roleIds.some(roleId => member.roles.cache.has(roleId))
       );
+
+      console.log('Found members:', membersWithRoles.size);
 
       if (!membersWithRoles.size) {
         return message.reply('❌ No members found with these roles.');

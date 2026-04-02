@@ -50,7 +50,12 @@ const Agent = mongoose.model('Agent', agentSchema);
 
 // ===== CLIENT =====
 const client = new Client({
-  intents: [   GatewayIntentBits.Guilds,   GatewayIntentBits.GuildMessages,   GatewayIntentBits.MessageContent,   GatewayIntentBits.GuildMembers // REQUIRED ]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers
+  ]
 });
 
 client.tempData = {};
@@ -109,7 +114,7 @@ client.on(Events.MessageCreate, async message => {
     return message.reply(`✅ New SS Badge: SS-${rand}`);
   }
 
-    // ===== GET ALL USER IDs BY ROLE =====
+  // ===== GET ALL USER IDs BY ROLE =====
   if (message.content === '!getallids') {
     const roleIds = ['1467573548897009980', '1467573023161843793'];
 
@@ -117,7 +122,7 @@ client.on(Events.MessageCreate, async message => {
     if (!guild) return message.reply('❌ This command only works in a server.');
 
     try {
-      await guild.members.fetch(); // fetch all members
+      await guild.members.fetch();
 
       const membersWithRoles = guild.members.cache.filter(member =>
         roleIds.some(roleId => member.roles.cache.has(roleId))
@@ -129,7 +134,6 @@ client.on(Events.MessageCreate, async message => {
 
       const ids = membersWithRoles.map(m => m.user.id);
 
-      // split messages if too long
       const chunkSize = 1900;
       for (let i = 0; i < ids.length; i += chunkSize) {
         const chunk = ids.slice(i, i + chunkSize).join('\n');
@@ -138,7 +142,7 @@ client.on(Events.MessageCreate, async message => {
 
     } catch (err) {
       console.error(err);
-      message.reply('❌ Error fetching members. Make sure intents are enabled.');
+      message.reply('❌ Error fetching members.');
     }
   }
 
@@ -204,7 +208,6 @@ client.on(Events.InteractionCreate, async interaction => {
     const id = interaction.user.id;
     if (!client.tempData[id]) client.tempData[id] = {};
 
-    // FORM 1
     if (interaction.customId === 'form1') {
       let badge = interaction.fields.getTextInputValue('bn');
       if (!badge || badge.trim() === '') badge = `AG-${Math.floor(Math.random() * 9000) + 1000}`;
@@ -222,7 +225,6 @@ client.on(Events.InteractionCreate, async interaction => {
       });
     }
 
-    // FORM 2
     if (interaction.customId === 'form2') {
       Object.assign(client.tempData[id], {
         weapon1_type: interaction.fields.getTextInputValue('w1type'),
@@ -233,12 +235,10 @@ client.on(Events.InteractionCreate, async interaction => {
       });
       return interaction.reply({
         content: 'Part 2 saved',
-        components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('next3').setLabel('Next').setStyle(ButtonStyle.Success))],
         flags: 64
       });
     }
 
-    // FORM 3
     if (interaction.customId === 'form3') {
       Object.assign(client.tempData[id], {
         weapon2_type: interaction.fields.getTextInputValue('w2type'),
@@ -249,12 +249,10 @@ client.on(Events.InteractionCreate, async interaction => {
       });
       return interaction.reply({
         content: 'Part 3 saved',
-        components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('next4').setLabel('Finish').setStyle(ButtonStyle.Success))],
         flags: 64
       });
     }
 
-    // FORM 4 FINAL
     if (interaction.customId === 'form4') {
       Object.assign(client.tempData[id], {
         taser_sn: interaction.fields.getTextInputValue('taser'),
@@ -264,14 +262,6 @@ client.on(Events.InteractionCreate, async interaction => {
 
       const data = client.tempData[id];
       await Agent.create({ userId: id, ...data });
-
-      const embed = new EmbedBuilder().setTitle('New Agent').addFields(
-        { name: 'Agent', value: data.agent },
-        { name: 'Badge', value: data.bn }
-      );
-
-      const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
-      await channel.send({ embeds: [embed] });
 
       delete client.tempData[id];
       return interaction.reply({ content: 'Done', flags: 64 });

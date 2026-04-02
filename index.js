@@ -50,7 +50,7 @@ const Agent = mongoose.model('Agent', agentSchema);
 
 // ===== CLIENT =====
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+  intents: [   GatewayIntentBits.Guilds,   GatewayIntentBits.GuildMessages,   GatewayIntentBits.MessageContent,   GatewayIntentBits.GuildMembers // REQUIRED ]
 });
 
 client.tempData = {};
@@ -107,6 +107,39 @@ client.on(Events.MessageCreate, async message => {
   if (message.content === '!generatebadgess') {
     const rand = Math.floor(Math.random() * 9000) + 1000;
     return message.reply(`✅ New SS Badge: SS-${rand}`);
+  }
+
+    // ===== GET ALL USER IDs BY ROLE =====
+  if (message.content === '!getallids') {
+    const roleIds = ['1467573548897009980', '1467573023161843793'];
+
+    const guild = message.guild;
+    if (!guild) return message.reply('❌ This command only works in a server.');
+
+    try {
+      await guild.members.fetch(); // fetch all members
+
+      const membersWithRoles = guild.members.cache.filter(member =>
+        roleIds.some(roleId => member.roles.cache.has(roleId))
+      );
+
+      if (!membersWithRoles.size) {
+        return message.reply('❌ No members found with these roles.');
+      }
+
+      const ids = membersWithRoles.map(m => m.user.id);
+
+      // split messages if too long
+      const chunkSize = 1900;
+      for (let i = 0; i < ids.length; i += chunkSize) {
+        const chunk = ids.slice(i, i + chunkSize).join('\n');
+        await message.channel.send(`📋 User IDs:\n${chunk}`);
+      }
+
+    } catch (err) {
+      console.error(err);
+      message.reply('❌ Error fetching members. Make sure intents are enabled.');
+    }
   }
 
   // ===== LIST AGENTS =====
